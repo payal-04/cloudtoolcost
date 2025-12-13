@@ -1,7 +1,10 @@
+from services.recommendations import get_recommendations
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from services.cost_service import fetch_today_cost, fetch_cost_by_service
 from models.cost_model import save_cost_record
+from services.cost_service import fetch_and_save_cost_by_service
+from services.alerts import detect_spike, send_alert_if_needed
 
 app = FastAPI(title="Cloud Cost Optimizer - Backend")
 
@@ -13,6 +16,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+def root():
+ return {"message": "FastAPI is running"}
 
 @app.get("/health")
 def health():
@@ -43,3 +48,29 @@ def save_today_cost():
         return {"saved": True, "amount": amount}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/cost/services/save")
+def save_services():
+    try:
+        items = fetch_and_save_cost_by_service(days=30)
+        return {"saved": True, "count": len(items)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/alerts/check")
+def check_spike():
+    try:
+        return detect_spike()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/alerts/send")
+def send_alert():
+    try:
+        return send_alert_if_needed()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/recommendations")
+def recommendations():
+    return get_recommendations()

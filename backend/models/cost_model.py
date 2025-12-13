@@ -19,3 +19,14 @@ def save_cost_record(amount):
     }
     daily.insert_one(doc)
     return True
+
+def save_service_costs(items):
+    for it in items:
+        doc = {
+            "service": it["service"],
+            "amount": it["amount"],
+            "period_start": it["period_start"],
+            "saved_at": datetime.utcnow()
+        }
+        db.service_costs.insert_one(doc)
+    return True 

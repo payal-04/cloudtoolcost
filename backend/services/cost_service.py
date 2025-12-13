@@ -2,7 +2,27 @@ import boto3
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from models.cost_model import save_service_costs
 
+
+def fetch_and_save_cost_by_service(days=30):
+    start, end = get_dates(days, 0)
+    resp = ce.get_cost_and_usage(
+        TimePeriod={"Start": start, "End": end},
+        Granularity="MONTHLY",
+        Metrics=["UnblendedCost"],
+        GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}]
+    )
+    groups = resp["ResultsByTime"][0]["Groups"]
+    svc_list = []
+    for g in groups:
+        svc_list.append({
+            "service": g["Keys"][0],
+            "amount": float(g["Metrics"]["UnblendedCost"]["Amount"]),
+            "period_start": start
+        })
+    save_service_costs(svc_list)
+    return svc_list
 
 # Load .env variables
 load_dotenv()
@@ -92,3 +112,5 @@ def fetch_cost_by_service(days=30):
 
     except Exception as e:
         return {"error": str(e)}
+    
+   
