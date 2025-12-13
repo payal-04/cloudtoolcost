@@ -1,7 +1,8 @@
-import boto3
+import boto3 
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+
 
 # Load .env variables
 load_dotenv()
