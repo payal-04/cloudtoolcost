@@ -1,68 +1,89 @@
-from services.recommendations import get_recommendations
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from services.cost_service import fetch_today_cost, fetch_cost_by_service
-from models.cost_model import save_cost_record
+
+# Cost services
 from services.cost_service import fetch_and_save_cost_by_service
+
+# Recommendations (Day 2 – safe version)
+from services.recommendations import get_recommendations
+
+# Alerts (Brevo)
 from services.alerts import detect_spike, send_alert_if_needed
 
-app = FastAPI(title="Cloud Cost Optimizer - Backend")
+# Cost prediction (Day 3 – ML)
+from services.cost_prediction import predict_next_7_days
 
-# Allow frontend access
+# AWS recommendations (Day 3 – read-only)
+from services.aws_recommendations import get_ec2_recommendations
+
+app = FastAPI(title="Cloud Cost Optimization Tool")
+
+# -------------------- CORS --------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development only
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-def root():
- return {"message": "FastAPI is running"}
 
+# -------------------- HEALTH --------------------
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+# -------------------- COST --------------------
 @app.get("/cost/today")
-def cost_today():
+def get_today_cost():
     try:
-        return fetch_today_cost()
+        # If you have a real service function, call it here
+        # return fetch_today_cost()
+        # For now, return mock data so frontend works
+        return {
+            "ResultsByTime": [
+                {
+                    "Total": {
+                        "UnblendedCost": {
+                            "Amount": "12.34",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/cost/services")
-def cost_services():
+
+@app.post("/cost/services")
+def save_service_cost():
     try:
-        return fetch_cost_by_service()
+        return fetch_and_save_cost_by_service()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/cost/save-today")
-def save_today_cost():
+# -------------------- RECOMMENDATIONS --------------------
+@app.get("/recommendations")
+def recommendations():
     try:
-        data = fetch_today_cost()
-        amount = float(
-            data["ResultsByTime"][0]["Total"]["UnblendedCost"]["Amount"]
-        )
-        save_cost_record(amount)
-        return {"saved": True, "amount": amount}
+        # return get_recommendations()
+        # Mock data for frontend
+        return [
+            "Stop unused EC2 instances",
+            "Switch S3 buckets to Infrequent Access",
+            "Use reserved instances for steady workloads"
+        ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/cost/services/save")
-def save_services():
-    try:
-        items = fetch_and_save_cost_by_service(days=30)
-        return {"saved": True, "count": len(items)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+# -------------------- ALERTS --------------------
 @app.get("/alerts/check")
-def check_spike():
+def check_alerts():
     try:
         return detect_spike()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/alerts/send")
 def send_alert():
@@ -71,6 +92,26 @@ def send_alert():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/recommendations")
-def recommendations():
-    return get_recommendations()
+# -------------------- PREDICTION --------------------
+@app.get("/cost/predictions")
+def get_predictions():
+    try:
+        # return predict_next_7_days()
+        # Mock data for frontend
+        return [
+            {"date": "2025-12-30", "amount": 12.34},
+            {"date": "2025-12-31", "amount": 13.45},
+            {"date": "2026-01-01", "amount": 14.10}
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# -------------------- AWS (READ-ONLY) --------------------
+@app.get("/aws/ec2-recommendations")
+def aws_ec2_recommendations():
+    return get_ec2_recommendations()
+
+# -------------------- ROOT --------------------
+@app.get("/")
+def root():
+    return {"status": "Backend is running"}
